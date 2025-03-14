@@ -8,33 +8,22 @@ on:
 jobs:
   track-dora:
     runs-on: ubuntu-latest
-
     steps:
-      - name: 🛎 Checkout repository
-        uses: actions/checkout@v3
-
-      - name: 🐍 Set up Python
-        uses: actions/setup-python@v3
-        with:
-          python-version: '3.x'
-
-      - name: 📦 Install dependencies
-        run: pip install pandas openpyxl
-
-      - name: ⏳ Calculate Lead Time
+      - name: Calculate Lead Time
         run: |
           COMMIT_TIME=$(git log -1 --format=%ct)
           CURRENT_TIME=$(date +%s)
           LEAD_TIME=$(( (CURRENT_TIME - COMMIT_TIME) / 60 ))
           echo "LEAD_TIME=$LEAD_TIME" >> $GITHUB_ENV
 
-      - name: 📊 Update Excel File
-        run: python update_excel.py
-
-      - name: 🚀 Commit and Push Changes
+      - name: Log Deployment to Google Sheets
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add metrics/dora_metrics.xlsx
-          git commit -m "📊 Update DORA metrics"
-          git push
+          curl -X POST "https://script.google.com/macros/s/AKfycbzrNJehEgy_7ByPDlje2gdSCfz37Jt5ls6uxEpz2hXngCtpLMmxyKX7J4gyanghFoN2/exec" \
+               -H "Content-Type: application/json" \
+               -d '{
+                     "repository": "${{ github.repository }}",
+                     "status": "Success",
+                     "lead_time": "${{ env.LEAD_TIME }}",
+                     "failure_rate": "5%", 
+                     "mttr": "10"
+                   }'
